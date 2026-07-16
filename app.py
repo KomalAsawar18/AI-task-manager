@@ -1,0 +1,487 @@
+"""
+Main entry point for the Streamlit Web Application of AI Task Manager.
+"""
+
+import streamlit as st
+import pandas as pd
+import os
+import json
+from services.task_manager import TaskManager
+from models.task import Task
+from utils.logger import get_logger
+
+# Initialize logger
+logger = get_logger("web_app")
+
+# Page configurations
+st.set_page_config(
+    page_title="AI Task Manager",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# Initialize TaskManager in session state
+if "manager" not in st.session_state:
+    st.session_state.manager = TaskManager()
+manager = st.session_state.manager
+
+# Initialize session state for navigation
+if "page" not in st.session_state:
+    st.session_state.page = "Dashboard"
+
+# Force dark theme mode settings
+bg = "#030014"
+bg_subtle = "#08071a"
+card = "rgba(255, 255, 255, 0.03)"
+card_hover = "rgba(255, 255, 255, 0.06)"
+border = "rgba(255, 255, 255, 0.08)"
+border_focus = "#8f56ef"
+text = "#fafafa"
+text_muted = "#8e90a6"
+text_dim = "#5c5d70"
+accent_gradient = "linear-gradient(135deg, #8f56ef, #4f20ec)"
+green = "#22c55e"
+green_muted = "rgba(34, 197, 94, 0.1)"
+red = "#ef4444"
+red_muted = "rgba(239, 68, 68, 0.1)"
+amber = "#f59e0b"
+amber_muted = "rgba(245, 158, 11, 0.1)"
+shadow = "none"
+radius = "12px"
+
+# Inject custom SaaS CSS block
+css = f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {{
+    --bg: {bg};
+    --bg-subtle: {bg_subtle};
+    --card: {card};
+    --card-hover: {card_hover};
+    --border: {border};
+    --border-focus: {border_focus};
+    --text: {text};
+    --text-muted: {text_muted};
+    --text-dim: {text_dim};
+    --accent-gradient: {accent_gradient};
+    --green: {green};
+    --green-muted: {green_muted};
+    --red: {red};
+    --red-muted: {red_muted};
+    --amber: {amber};
+    --amber-muted: {amber_muted};
+    --radius: {radius};
+}}
+
+/* Hide default Streamlit top header line and footer */
+header[data-testid="stHeader"], footer, [data-testid="stDecoration"] {{
+    display: none !important;
+}}
+
+/* Global app background */
+html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"], .main, .block-container, section[data-testid="stMain"] {{
+    background-color: var(--bg) !important;
+    color: var(--text) !important;
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
+}}
+
+.block-container {{
+    padding: 2.5rem 3rem 4rem !important;
+    max-width: 1400px !important;
+}}
+
+/* Sidebar Custom Styling */
+[data-testid="stSidebar"] {{
+    background-color: var(--bg-subtle) !important;
+    border-right: 1px solid var(--border) !important;
+    backdrop-filter: blur(20px);
+}}
+
+/* Metric Cards Custom Layout */
+.metric-card-saas {{
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.4rem;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.2);
+    margin-bottom: 1rem;
+}}
+.metric-label-saas {{
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}}
+.metric-value-saas {{
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.04em;
+    margin-top: 0.2rem;
+}}
+
+/* Custom badge styles */
+.badge {{
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}}
+.badge-prio-high {{ color: var(--red); background: var(--red-muted); border: 1px solid rgba(239, 68, 68, 0.2); }}
+.badge-prio-medium {{ color: var(--amber); background: var(--amber-muted); border: 1px solid rgba(245, 158, 11, 0.2); }}
+.badge-prio-low {{ color: var(--green); background: var(--green-muted); border: 1px solid rgba(34, 197, 94, 0.2); }}
+.badge-status-completed {{ color: var(--green); background: var(--green-muted); border: 1px solid rgba(34, 197, 94, 0.2); }}
+.badge-status-pending {{ color: #8f56ef; background: rgba(143, 86, 239, 0.1); border: 1px solid rgba(143, 86, 239, 0.2); }}
+
+/* Custom task list card styling */
+.premium-card {{
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    margin-bottom: 1.25rem;
+    transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
+}}
+.premium-card:hover {{
+    border-color: rgba(143, 86, 239, 0.4);
+    background: var(--card-hover);
+    transform: translateY(-1px);
+}}
+
+/* Custom Buttons styling */
+.stButton > button {{
+    background: var(--card) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    transition: all 0.2s !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding: 0.5rem 1rem !important;
+}}
+.stButton > button:hover {{
+    border-color: #8f56ef !important;
+    background: rgba(143, 86, 239, 0.1) !important;
+    color: #fafafa !important;
+}}
+
+/* Primary / Form Submit Buttons */
+div[data-testid="stFormSubmitButton"] button, button[type="primary"] {{
+    background: var(--accent-gradient) !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 14px 0 rgba(143, 86, 239, 0.4) !important;
+    text-align: center !important;
+    justify-content: center !important;
+}}
+div[data-testid="stFormSubmitButton"] button:hover, button[type="primary"]:hover {{
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px 0 rgba(143, 86, 239, 0.6) !important;
+}}
+
+/* Set horizontal block gap */
+[data-testid="stHorizontalBlock"] {{
+    gap: 1.25rem !important;
+}}
+</style>
+  """
+st.markdown(css, unsafe_allow_html=True)
+
+# Helper function for rendering KPI metric card
+def render_metric_card(label: str, value: str):
+    st.markdown(f"""
+    <div class="metric-card-saas">
+        <div class="metric-label-saas">{label}</div>
+        <div class="metric-value-saas">{value}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Navigation Callback
+def set_page(page_name: str):
+    st.session_state.page = page_name
+
+# ----------------- SIDEBAR NAVIGATION -----------------
+with st.sidebar:
+    st.markdown("""
+    <div style="padding-top: 1rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem;">
+        <span style="font-size: 1.5rem; font-weight: 800; letter-spacing: -0.04em;">🤖 AI Task Manager</span>
+        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.2rem;">SaaS Operational Core</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Render Navigation via st.session_state callback
+    st.button("🏠 Dashboard", type="primary" if st.session_state.page == "Dashboard" else "secondary", on_click=set_page, args=("Dashboard",), use_container_width=True)
+    st.button("📋 Tasks", type="primary" if st.session_state.page == "Tasks" else "secondary", on_click=set_page, args=("Tasks",), use_container_width=True)
+    st.button("➕ Add Task", type="primary" if st.session_state.page == "Add Task" else "secondary", on_click=set_page, args=("Add Task",), use_container_width=True)
+    st.button("📊 Analytics (Coming Soon)", type="primary" if st.session_state.page == "Analytics" else "secondary", on_click=set_page, args=("Analytics",), use_container_width=True)
+    st.button("✨ AI Assistant (Coming Soon)", type="primary" if st.session_state.page == "AI Assistant" else "secondary", on_click=set_page, args=("AI Assistant",), use_container_width=True)
+    st.button("⚙️ Settings", type="primary" if st.session_state.page == "Settings" else "secondary", on_click=set_page, args=("Settings",), use_container_width=True)
+
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 2rem; font-size: 0.72rem; color: var(--text-muted); text-align: center;">
+        Platform: TKXEL Core Framework
+    </div>
+    """, unsafe_allow_html=True)
+
+# Fetch current task statistics
+stats = manager.show_statistics()
+
+# ----------------- PAGE ROUTING -----------------
+
+# ================= PAGE: DASHBOARD =================
+if st.session_state.page == "Dashboard":
+    # 1. Welcome Section
+    st.markdown("""
+    <div style="padding-bottom: 1.5rem;">
+        <span style="font-size: 2.2rem; font-weight: 800; letter-spacing: -0.04em;">Welcome back 👋</span>
+        <div style="font-size: 0.95rem; color: var(--text-muted); margin-top: 0.15rem;">
+            Let's orchestrate and prioritize your tasks with precision.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 2. Statistics
+    kpi_c1, kpi_c2, kpi_c3, kpi_c4 = st.columns(4)
+    with kpi_c1:
+        render_metric_card("Total Tasks", str(stats["total"]))
+    with kpi_c2:
+        render_metric_card("Pending", str(stats["pending"]))
+    with kpi_c3:
+        render_metric_card("Completed", str(stats["completed"]))
+    with kpi_c4:
+        render_metric_card("Progress Rate", f"{stats['percentage_completed']}%")
+        
+    # 3. Progress bar
+    st.markdown("### 📈 Completion Progress Dashboard")
+    st.progress(stats["percentage_completed"] / 100.0)
+    st.write(f"System completion state: **{stats['percentage_completed']}%**")
+    
+    st.write("")  # space
+    
+    # Layout Grid
+    dash_col1, dash_col2 = st.columns([5, 5])
+    
+    with dash_col1:
+        # 4. Recent Activity
+        st.markdown("### ⏱️ Recent Queue Activity")
+        all_tasks = manager.view_tasks()
+        recent_tasks = all_tasks[-3:] if all_tasks else []
+        
+        if not recent_tasks:
+            st.info("No logs in task list queue. Add tasks to see them.")
+        else:
+            for t in reversed(recent_tasks):
+                prio_badge_cls = f"badge-prio-{t.priority.lower()}"
+                status_badge_cls = "badge-status-completed" if t.completed else "badge-status-pending"
+                status_text = "Completed" if t.completed else "Pending"
+                st.markdown(f"""
+                <div class="premium-card">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-weight: 700; font-size: 1.05rem;">{t.title}</span>
+                        <div>
+                            <span class="badge {prio_badge_cls}">{t.priority}</span>
+                            <span class="badge {status_badge_cls}" style="margin-left: 5px;">{status_text}</span>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+    with dash_col2:
+        # 5. AI Suggestions placeholder
+        st.markdown("### 💡 AI Engine Suggestions")
+        st.markdown("""
+        <div class="premium-card">
+            <div style="font-weight: 700; color: #8f56ef; margin-bottom: 0.4rem;">💡 System Recommendation</div>
+            <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.4;">
+                Complete High priority tasks first to optimize system queue throughput.
+            </div>
+            <hr style="margin: 0.8rem 0; border: 0; border-top: 1px solid var(--border);">
+            <div style="font-weight: 700; color: #8f56ef; margin-bottom: 0.4rem;">📈 Queue Balance</div>
+            <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.4;">
+                Queue backlog is stable. Keep completing tasks to maintain index response health.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# ================= PAGE: TASKS =================
+elif st.session_state.page == "Tasks":
+    st.markdown("""
+    <div style="padding-bottom: 1.5rem;">
+        <span style="font-size: 2.2rem; font-weight: 800; letter-spacing: -0.04em;">📋 Task Backlog Registry</span>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">View, complete, filter and query tasks.</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Search and Filter criteria
+    f_col1, f_col2 = st.columns([7, 3])
+    with f_col1:
+        search_query = st.text_input("Search tasks...", placeholder="Search by title keywords or details...")
+    with f_col2:
+        priority_filter = st.selectbox("Priority Level", ["All", "High", "Medium", "Low"])
+        
+    all_tasks = manager.view_tasks()
+    
+    # Filter operations
+    filtered_tasks = all_tasks
+    if search_query:
+        q = search_query.lower()
+        filtered_tasks = [t for t in filtered_tasks if q in t.title.lower() or (t.description and q in t.description.lower())]
+    if priority_filter != "All":
+        filtered_tasks = [t for t in filtered_tasks if t.priority == priority_filter]
+        
+    st.write("")  # space
+    
+    if not filtered_tasks:
+        st.info("No matching tasks inside registry backlog.")
+    else:
+        # Display task cards
+        for t in reversed(filtered_tasks):
+            prio_badge_cls = f"badge-prio-{t.priority.lower()}"
+            status_badge_cls = "badge-status-completed" if t.completed else "badge-status-pending"
+            status_text = "Completed" if t.completed else "Pending"
+            
+            t_col1, t_col2 = st.columns([8, 2])
+            with t_col1:
+                desc_text = t.description if t.description else "*No description provided.*"
+                st.markdown(f"""
+                <div class="premium-card">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-size: 1.15rem; font-weight: 700; color: var(--text);">{t.title}</span>
+                        <div>
+                            <span class="badge {prio_badge_cls}">{t.priority}</span>
+                            <span class="badge {status_badge_cls}" style="margin-left: 5px;">{status_text}</span>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.6rem;">
+                        {desc_text}
+                    </div>
+                    <div style="font-size: 0.72rem; color: var(--text-dim);">
+                        Task ID: #{t.id} | Created: {t.created_at.strftime('%Y-%m-%d %H:%M')}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            with t_col2:
+                st.write("") # spacing alignment
+                if not t.completed:
+                    if st.button("✓ Complete", key=f"comp_{t.id}", use_container_width=True):
+                        manager.complete_task(t.id)
+                        st.toast(f"Task #{t.id} completed!")
+                        st.rerun()
+                else:
+                    st.button("✓ Done", key=f"done_{t.id}", disabled=True, use_container_width=True)
+                    
+                if st.button("🗑 Delete", key=f"del_{t.id}", use_container_width=True):
+                    manager.delete_task(t.id)
+                    st.toast(f"Task #{t.id} deleted.")
+                    st.rerun()
+
+# ================= PAGE: ADD TASK =================
+elif st.session_state.page == "Add Task":
+    st.markdown("""
+    <div style="padding-bottom: 1.5rem;">
+        <span style="font-size: 2.2rem; font-weight: 800; letter-spacing: -0.04em;">➕ Create Task Record</span>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Insert a validated task entry into the serialization queue.</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    form_c1, form_c2 = st.columns([7, 3])
+    
+    with form_c1:
+        # Relocated creation form
+        with st.form("create_task_form", clear_on_submit=True):
+            title = st.text_input("Task Title (minimum 3 characters)", placeholder="Enter title...")
+            description = st.text_area("Task Description (optional)", placeholder="Enter details...")
+            priority = st.selectbox("Task Priority Level", ["Low", "Medium", "High"], index=1)
+            
+            submitted = st.form_submit_button("Add Task To Registry", use_container_width=True)
+            if submitted:
+                if len(title) < 3:
+                    st.error("Validation Error: Title must be at least 3 characters long.")
+                else:
+                    try:
+                        task = manager.add_task(title, description, priority)
+                        st.success(f"Successfully Created Task #{task.id}!")
+                    except Exception as e:
+                        st.error(f"Failed to create task: {e}")
+                        
+    with form_c2:
+        st.markdown("### 🏷️ Rules & Constraints")
+        st.info("""
+        - **Title Validation:** Must be at least 3 characters.
+        - **Priority Enums:** Constrained strictly to `Literal["Low", "Medium", "High"]`.
+        - **Atomic Save:** Writes to `data/tasks.json` instantaneously on successful submit actions.
+        """)
+
+# ================= PAGES: COMING SOON / PLACEHOLDERS =================
+elif st.session_state.page in ["Analytics", "AI Assistant"]:
+    title_text = "📊 Analytics" if st.session_state.page == "Analytics" else "✨ AI Assistant"
+    desc_text = (
+        "Analytics & Predictive queue metrics are coming soon in Sprint 3."
+        if st.session_state.page == "Analytics"
+        else "AI Agentic planning, LangChain tools and OpenRouter routing are coming soon."
+    )
+    
+    st.markdown(f"""
+    <div style="padding-bottom: 1.5rem;">
+        <span style="font-size: 2.2rem; font-weight: 800; letter-spacing: -0.04em;">🛠️ Feature Node</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div class="premium-card" style="text-align: center; padding: 4rem 2rem;">
+        <span style="font-size: 3rem;">⚡</span>
+        <h2 style="font-weight: 800; letter-spacing: -0.03em; margin-top: 1rem;">{title_text}</h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 500px; margin: 0.5rem auto 1.5rem;">
+            {desc_text}
+        </p>
+        <span class="badge" style="background: rgba(143, 86, 239, 0.1); color: #8f56ef; padding: 6px 16px; border: 1px solid rgba(143, 86, 239, 0.2);">
+            Coming Soon
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ================= PAGE: SETTINGS =================
+elif st.session_state.page == "Settings":
+    st.markdown("""
+    <div style="padding-bottom: 1.5rem;">
+        <span style="font-size: 2.2rem; font-weight: 800; letter-spacing: -0.04em;">⚙️ Database & Settings</span>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">Manage backups, queue database, and export options.</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # 1. Export JSON
+    st.markdown("### 📥 Database Backups")
+    tasks_list = [t.model_dump(mode="json") for t in manager.view_tasks()]
+    tasks_json_data = json.dumps(tasks_list, indent=4)
+    
+    st.download_button(
+        label="Export Tasks Database (JSON)",
+        data=tasks_json_data,
+        file_name="tasks_backup.json",
+        mime="application/json",
+        use_container_width=True
+    )
+    
+    st.write("")  # space
+    
+    # 2. Clear Tasks (Danger Zone)
+    st.markdown("### 🚨 Danger Zone")
+    with st.expander("Wipe Task Database", expanded=True):
+        st.write("Wiping the task repository database is permanent and cannot be undone.")
+        if st.button("Wipe Task Database", use_container_width=True, type="secondary"):
+            manager.tasks = []
+            manager.save_tasks()
+            st.success("Wiped task database successfully.")
+            st.rerun()
