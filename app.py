@@ -6,8 +6,15 @@ import streamlit as st
 import pandas as pd
 import os
 import json
+import sys
+import importlib
 from datetime import datetime
+
+# Force reload module to prevent Streamlit caching old class definitions
+import services.task_manager
+importlib.reload(services.task_manager)
 from services.task_manager import TaskManager
+
 from models.task import Task
 from pydantic import ValidationError
 from utils.logger import get_logger
@@ -232,6 +239,34 @@ div[data-testid="stFormSubmitButton"] button:hover, button[type="primary"]:hover
 /* Set horizontal block gap */
 [data-testid="stHorizontalBlock"] {{
     gap: 1.25rem !important;
+}}
+
+/* Explicitly style input fields, textareas, and selectboxes to match the theme colors */
+div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea {{
+    background-color: var(--bg-subtle) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif !important;
+}}
+
+div[data-baseweb="input"] input:focus, div[data-baseweb="textarea"] textarea:focus {{
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 1px var(--border-focus) !important;
+}}
+
+/* Ensure placeholder text is readable */
+div[data-baseweb="input"] input::placeholder, div[data-baseweb="textarea"] textarea::placeholder {{
+    color: var(--text-muted) !important;
+    opacity: 0.7;
+}}
+
+/* Selectbox custom styles */
+div[data-baseweb="select"] > div {{
+    background-color: var(--bg-subtle) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
 }}
 </style>
   """
