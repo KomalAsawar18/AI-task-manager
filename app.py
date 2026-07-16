@@ -449,8 +449,8 @@ elif st.session_state.page == "Tasks":
         filtered_tasks = manager.view_tasks()
         
     # Delegate filter logic to backend filter
-    filter_set = set(manager.filter_tasks(status=status_filter, priority=priority_filter))
-    filtered_tasks = [t for t in filtered_tasks if t in filter_set]
+    filter_ids = {t.id for t in manager.filter_tasks(status=status_filter, priority=priority_filter)}
+    filtered_tasks = [t for t in filtered_tasks if t.id in filter_ids]
     
     # Delegate sort logic to backend sorter
     filtered_tasks = manager.sort_tasks(filtered_tasks, sort_criterion)
