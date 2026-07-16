@@ -275,6 +275,12 @@ with st.sidebar:
         st.session_state.theme = theme_selection
         st.rerun()
         
+    # Read modifications timestamp
+    last_updated_str = "Never"
+    if os.path.exists(manager.file_path):
+        mtime = os.path.getmtime(manager.file_path)
+        last_updated_str = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+        
     st.markdown(f"""
     <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 2rem; font-size: 0.72rem; color: var(--text-muted); text-align: center;">
         Platform: TKXEL Core Framework<br>
