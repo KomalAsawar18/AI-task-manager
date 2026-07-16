@@ -239,6 +239,11 @@ with st.sidebar:
 # Fetch current task statistics
 stats = manager.show_statistics()
 
+# Display success notifications from session state
+if "success_msg" in st.session_state and st.session_state.success_msg:
+    st.success(st.session_state.success_msg)
+    st.session_state.success_msg = None
+
 # ----------------- PAGE ROUTING -----------------
 
 # ================= PAGE: DASHBOARD =================
@@ -334,7 +339,16 @@ elif st.session_state.page == "Tasks":
     with f_col3:
         priority_filter = st.selectbox("Priority Level", ["All", "High", "Medium", "Low"])
     with f_col4:
-        sort_criterion = st.selectbox("Sort Order", ["Newest First", "Oldest First", "High Priority First", "Low Priority First"])
+        sort_option = st.selectbox("Sort Order", ["Newest", "Oldest", "High Priority", "Low Priority"])
+        
+    # Map to backend sort strings
+    sort_mapping = {
+        "Newest": "Newest First",
+        "Oldest": "Oldest First",
+        "High Priority": "High Priority First",
+        "Low Priority": "Low Priority First"
+    }
+    sort_criterion = sort_mapping.get(sort_option, "Newest First")
         
     # Delegate query logic to backend search
     if search_query:
@@ -352,7 +366,13 @@ elif st.session_state.page == "Tasks":
     st.write("")  # space
     
     if not filtered_tasks:
-        st.info("No matching tasks inside registry backlog.")
+        st.markdown("""
+        <div style="text-align: center; padding: 4rem 2rem; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--card);">
+            <span style="font-size: 3rem;">🔍</span>
+            <h3 style="margin-top: 1rem; font-weight: 700; color: var(--text);">No tasks found.</h3>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 0;">Try adjusting your search queries or priority level filters.</p>
+        </div>
+        """, unsafe_allow_html=True)
     else:
         # Display task cards
         for t in filtered_tasks:
@@ -385,14 +405,14 @@ elif st.session_state.page == "Tasks":
                 if not t.completed:
                     if st.button("✓ Complete", key=f"comp_{t.id}", use_container_width=True):
                         manager.complete_task(t.id)
-                        st.toast(f"Task #{t.id} completed!")
+                        st.session_state.success_msg = f"Task #{t.id} marked as completed successfully!"
                         st.rerun()
                 else:
                     st.button("✓ Done", key=f"done_{t.id}", disabled=True, use_container_width=True)
                     
                 if st.button("🗑 Delete", key=f"del_{t.id}", use_container_width=True):
                     manager.delete_task(t.id)
-                    st.toast(f"Task #{t.id} deleted.")
+                    st.session_state.success_msg = f"Task #{t.id} deleted successfully!"
                     st.rerun()
 
 # ================= PAGE: ADD TASK =================
@@ -417,7 +437,8 @@ elif st.session_state.page == "Add Task":
             if submitted:
                 try:
                     task = manager.add_task(title, description, priority)
-                    st.success(f"Successfully Created Task #{task.id}!")
+                    st.session_state.success_msg = f"Task #{task.id} created successfully!"
+                    st.rerun()
                 except ValidationError as ve:
                     for err in ve.errors():
                         field = " -> ".join(str(l) for l in err['loc'])
