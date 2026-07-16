@@ -216,15 +216,17 @@ class TaskManager:
         Returns:
             dict: Task statistics.
         """
-        total = len(self.tasks)
-        completed = sum(1 for t in self.iter_tasks() if t.completed)
-        pending = total - completed
+        total = self.get_total_tasks()
+        completed = self.get_completed_tasks_count()
+        pending = self.get_pending_tasks_count()
         percentage = (completed / total * 100) if total > 0 else 0.0
         
-        priorities = {"Low": 0, "Medium": 0, "High": 0}
-        for task in self.iter_tasks():
-            priorities[task.priority] = priorities.get(task.priority, 0) + 1
-            
+        priorities = {
+            "Low": self.get_low_priority_count(),
+            "Medium": self.get_medium_priority_count(),
+            "High": self.get_high_priority_count()
+        }
+        
         return {
             "total": total,
             "completed": completed,
@@ -232,4 +234,75 @@ class TaskManager:
             "percentage_completed": round(percentage, 2),
             "priority_counts": priorities
         }
+
+    def get_total_tasks(self) -> int:
+        """Exposes the total tasks count."""
+        return len(self.tasks)
+        
+    def get_completed_tasks_count(self) -> int:
+        """Exposes completed tasks count."""
+        return sum(1 for t in self.iter_tasks() if t.completed)
+        
+    def get_pending_tasks_count(self) -> int:
+        """Exposes pending tasks count."""
+        return self.get_total_tasks() - self.get_completed_tasks_count()
+        
+    def get_high_priority_count(self) -> int:
+        """Exposes high priority tasks count."""
+        return sum(1 for t in self.iter_tasks() if t.priority == "High")
+        
+    def get_medium_priority_count(self) -> int:
+        """Exposes medium priority tasks count."""
+        return sum(1 for t in self.iter_tasks() if t.priority == "Medium")
+        
+    def get_low_priority_count(self) -> int:
+        """Exposes low priority tasks count."""
+        return sum(1 for t in self.iter_tasks() if t.priority == "Low")
+
+    @log_action
+    def filter_tasks(self, status: Optional[str] = None, priority: Optional[str] = None) -> List[Task]:
+        """
+        Filters tasks by completion status and/or priority rating.
+        
+        Args:
+            status (Optional[str]): Status filter ('All', 'Pending', 'Completed').
+            priority (Optional[str]): Priority filter ('All', 'High', 'Medium', 'Low').
+            
+        Returns:
+            List[Task]: Filtered tasks.
+        """
+        tasks = self.view_tasks()
+        if status == "Completed":
+            tasks = [t for t in tasks if t.completed]
+        elif status == "Pending":
+            tasks = [t for t in tasks if not t.completed]
+            
+        if priority is not None and priority != "All":
+            tasks = [t for t in tasks if t.priority == priority]
+            
+        return tasks
+
+    @log_action
+    def sort_tasks(self, tasks: List[Task], criterion: str) -> List[Task]:
+        """
+        Sorts the given tasks list based on sorting criteria.
+        
+        Args:
+            tasks (List[Task]): Tasks list.
+            criterion (str): Sort criterion.
+            
+        Returns:
+            List[Task]: Sorted tasks.
+        """
+        prio_map = {"High": 3, "Medium": 2, "Low": 1}
+        if criterion == "Newest First":
+            return sorted(tasks, key=lambda t: t.created_at, reverse=True)
+        elif criterion == "Oldest First":
+            return sorted(tasks, key=lambda t: t.created_at)
+        elif criterion == "High Priority First":
+            return sorted(tasks, key=lambda t: prio_map.get(t.priority, 0), reverse=True)
+        elif criterion == "Low Priority First":
+            return sorted(tasks, key=lambda t: prio_map.get(t.priority, 0))
+        return tasks
+
 

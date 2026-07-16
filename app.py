@@ -326,21 +326,28 @@ elif st.session_state.page == "Tasks":
     """, unsafe_allow_html=True)
     
     # Search and Filter criteria
-    f_col1, f_col2 = st.columns([7, 3])
+    f_col1, f_col2, f_col3, f_col4 = st.columns([4, 2, 2, 2])
     with f_col1:
         search_query = st.text_input("Search tasks...", placeholder="Search by title keywords or details...")
     with f_col2:
+        status_filter = st.selectbox("Status", ["All", "Pending", "Completed"])
+    with f_col3:
         priority_filter = st.selectbox("Priority Level", ["All", "High", "Medium", "Low"])
+    with f_col4:
+        sort_criterion = st.selectbox("Sort Order", ["Newest First", "Oldest First", "High Priority First", "Low Priority First"])
         
-    all_tasks = manager.view_tasks()
-    
-    # Filter operations
-    filtered_tasks = all_tasks
+    # Delegate query logic to backend search
     if search_query:
-        q = search_query.lower()
-        filtered_tasks = [t for t in filtered_tasks if q in t.title.lower() or (t.description and q in t.description.lower())]
-    if priority_filter != "All":
-        filtered_tasks = [t for t in filtered_tasks if t.priority == priority_filter]
+        filtered_tasks = manager.search_tasks(search_query)
+    else:
+        filtered_tasks = manager.view_tasks()
+        
+    # Delegate filter logic to backend filter
+    filter_set = set(manager.filter_tasks(status=status_filter, priority=priority_filter))
+    filtered_tasks = [t for t in filtered_tasks if t in filter_set]
+    
+    # Delegate sort logic to backend sorter
+    filtered_tasks = manager.sort_tasks(filtered_tasks, sort_criterion)
         
     st.write("")  # space
     
@@ -348,7 +355,7 @@ elif st.session_state.page == "Tasks":
         st.info("No matching tasks inside registry backlog.")
     else:
         # Display task cards
-        for t in reversed(filtered_tasks):
+        for t in filtered_tasks:
             prio_badge_cls = f"badge-prio-{t.priority.lower()}"
             status_badge_cls = "badge-status-completed" if t.completed else "badge-status-pending"
             status_text = "Completed" if t.completed else "Pending"

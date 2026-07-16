@@ -118,5 +118,58 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(stats["total"], 2)
         self.assertEqual(stats["priority_counts"]["High"], 1)
 
+    def test_filter_tasks(self):
+        t1 = self.manager.add_task("Task A", priority="High")
+        t2 = self.manager.add_task("Task B", priority="Low")
+        t3 = self.manager.add_task("Task C", priority="High")
+        self.manager.complete_task(t1.id)
+
+        # Filter completed
+        comp = self.manager.filter_tasks(status="Completed")
+        self.assertEqual(len(comp), 1)
+        self.assertEqual(comp[0].title, "Task A")
+
+        # Filter pending
+        pend = self.manager.filter_tasks(status="Pending")
+        self.assertEqual(len(pend), 2)
+
+        # Filter priority High
+        prio_high = self.manager.filter_tasks(priority="High")
+        self.assertEqual(len(prio_high), 2)
+
+        # Filter combination (completed + High)
+        combo = self.manager.filter_tasks(status="Completed", priority="High")
+        self.assertEqual(len(combo), 1)
+
+    def test_sort_tasks(self):
+        t1 = self.manager.add_task("Task A", priority="Low")
+        t2 = self.manager.add_task("Task B", priority="High")
+        t3 = self.manager.add_task("Task C", priority="Medium")
+
+        # High priority first
+        high_prio = self.manager.sort_tasks(self.manager.view_tasks(), "High Priority First")
+        self.assertEqual(high_prio[0].title, "Task B")
+        self.assertEqual(high_prio[1].title, "Task C")
+        self.assertEqual(high_prio[2].title, "Task A")
+
+        # Low priority first
+        low_prio = self.manager.sort_tasks(self.manager.view_tasks(), "Low Priority First")
+        self.assertEqual(low_prio[0].title, "Task A")
+        self.assertEqual(low_prio[1].title, "Task C")
+        self.assertEqual(low_prio[2].title, "Task B")
+
+    def test_individual_statistics(self):
+        self.manager.add_task("Task 1", priority="High")
+        self.manager.add_task("Task 2", priority="Medium")
+        t3 = self.manager.add_task("Task 3", priority="Low")
+        self.manager.complete_task(t3.id)
+
+        self.assertEqual(self.manager.get_total_tasks(), 3)
+        self.assertEqual(self.manager.get_completed_tasks_count(), 1)
+        self.assertEqual(self.manager.get_pending_tasks_count(), 2)
+        self.assertEqual(self.manager.get_high_priority_count(), 1)
+        self.assertEqual(self.manager.get_medium_priority_count(), 1)
+        self.assertEqual(self.manager.get_low_priority_count(), 1)
+
 if __name__ == '__main__':
     unittest.main()
