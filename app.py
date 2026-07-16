@@ -474,7 +474,7 @@ elif st.session_state.page == "Tasks":
             
             t_col1, t_col2 = st.columns([8, 2])
             with t_col1:
-                desc_text = t.description if t.description else "*No description provided.*"
+                desc_html = t.description.replace("\n", "<br>") if t.description else "<span style='font-style: italic; color: var(--text-dim);'>No description provided.</span>"
                 overdue_badge = '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3); margin-left: 5px;">⏳ Overdue</span>' if not t.completed else ''
                 st.markdown(f"""
                 <div class="premium-card">
@@ -487,7 +487,7 @@ elif st.session_state.page == "Tasks":
                         </div>
                     </div>
                     <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.6rem;">
-                        {desc_text}
+                        {desc_html}
                     </div>
                     <div style="font-size: 0.72rem; color: var(--text-dim);">
                         Task ID: #{t.id} | Created: {t.created_at.strftime('%Y-%m-%d %H:%M')}
