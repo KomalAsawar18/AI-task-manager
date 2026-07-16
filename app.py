@@ -8,6 +8,7 @@ import os
 import json
 from services.task_manager import TaskManager
 from models.task import Task
+from pydantic import ValidationError
 from utils.logger import get_logger
 
 # Initialize logger
@@ -264,9 +265,9 @@ if st.session_state.page == "Dashboard":
         render_metric_card("Progress Rate", f"{stats['percentage_completed']}%")
         
     # 3. Progress bar
-    st.markdown("### 📈 Completion Progress Dashboard")
+    st.markdown("### 📈 Today's Progress")
     st.progress(stats["percentage_completed"] / 100.0)
-    st.write(f"System completion state: **{stats['percentage_completed']}%**")
+    st.write(f"Today's Progress: **{stats['percentage_completed']}%**")
     
     st.write("")  # space
     
@@ -274,8 +275,8 @@ if st.session_state.page == "Dashboard":
     dash_col1, dash_col2 = st.columns([5, 5])
     
     with dash_col1:
-        # 4. Recent Activity
-        st.markdown("### ⏱️ Recent Queue Activity")
+        # 4. Recent Tasks
+        st.markdown("### ⏱️ Recent Tasks")
         all_tasks = manager.view_tasks()
         recent_tasks = all_tasks[-3:] if all_tasks else []
         
@@ -303,12 +304,12 @@ if st.session_state.page == "Dashboard":
         st.markdown("### 💡 AI Engine Suggestions")
         st.markdown("""
         <div class="premium-card">
-            <div style="font-weight: 700; color: #8f56ef; margin-bottom: 0.4rem;">💡 System Recommendation</div>
+            <div style="font-weight: 700; color: #8f56ef; margin-bottom: 0.4rem;">💡 Today's Recommendation</div>
             <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.4;">
                 Complete High priority tasks first to optimize system queue throughput.
             </div>
             <hr style="margin: 0.8rem 0; border: 0; border-top: 1px solid var(--border);">
-            <div style="font-weight: 700; color: #8f56ef; margin-bottom: 0.4rem;">📈 Queue Balance</div>
+            <div style="font-weight: 700; color: #8f56ef; margin-bottom: 0.4rem;">📈 Productivity Tips</div>
             <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.4;">
                 Queue backlog is stable. Keep completing tasks to maintain index response health.
             </div>
@@ -407,14 +408,15 @@ elif st.session_state.page == "Add Task":
             
             submitted = st.form_submit_button("Add Task To Registry", use_container_width=True)
             if submitted:
-                if len(title) < 3:
-                    st.error("Validation Error: Title must be at least 3 characters long.")
-                else:
-                    try:
-                        task = manager.add_task(title, description, priority)
-                        st.success(f"Successfully Created Task #{task.id}!")
-                    except Exception as e:
-                        st.error(f"Failed to create task: {e}")
+                try:
+                    task = manager.add_task(title, description, priority)
+                    st.success(f"Successfully Created Task #{task.id}!")
+                except ValidationError as ve:
+                    for err in ve.errors():
+                        field = " -> ".join(str(l) for l in err['loc'])
+                        st.error(f"Validation Error ({field}): {err['msg']}")
+                except Exception as e:
+                    st.error(f"Failed to create task: {e}")
                         
     with form_c2:
         st.markdown("### 🏷️ Rules & Constraints")

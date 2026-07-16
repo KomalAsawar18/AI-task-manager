@@ -5,6 +5,7 @@ This module implements the TaskManager service class.
 import json
 import os
 from typing import List, Optional, Generator
+from pydantic import ValidationError
 from models.task import Task
 from utils.decorators import log_action
 from utils.logger import get_logger
@@ -98,16 +99,21 @@ class TaskManager:
             Task: The newly created task.
         """
         next_id = max((t.id for t in self.iter_tasks()), default=0) + 1
-        
-        task = Task(
-            id=next_id,
-            title=title,
-            description=description,
-            priority=priority,
-            completed=False
-        )
+        try:
+            task = Task(
+                id=next_id,
+                title=title,
+                description=description,
+                priority=priority,
+                completed=False
+            )
+        except ValidationError as ve:
+            logger.error(f"Validation Failed: {str(ve)}")
+            raise ve
+            
         self.tasks.append(task)
         self.save_tasks()
+        logger.info(f"Task Created: {task.id} - {task.title}")
         return task
 
     @log_action
@@ -120,11 +126,6 @@ class TaskManager:
         """
         return list(self.iter_tasks())
 
-    def get_tasks(self) -> List[Task]:
-        """
-        Alias for compatibility with existing codebase.
-        """
-        return self.view_tasks()
 
     @log_action
     def complete_task(self, task_id: int) -> Optional[Task]:
@@ -141,6 +142,7 @@ class TaskManager:
         if task:
             task.completed = True
             self.save_tasks()
+            logger.info(f"Task Completed: {task.id} - {task.title}")
             return task
         return None
 
@@ -159,11 +161,12 @@ class TaskManager:
         if task_to_delete:
             self.tasks.remove(task_to_delete)
             self.save_tasks()
+            logger.info(f"Task Deleted: {task_id}")
             return True
         return False
 
     @log_action
-    def search_task(self, query: str) -> List[Task]:
+    def search_tasks(self, query: str) -> List[Task]:
         """
         Searches tasks by title or description.
         
@@ -178,12 +181,6 @@ class TaskManager:
             task for task in self.iter_tasks()
             if query_lower in task.title.lower() or (task.description and query_lower in task.description.lower())
         ]
-
-    def search_tasks(self, query: str) -> List[Task]:
-        """
-        Alias for compatibility with existing codebase.
-        """
-        return self.search_task(query)
 
     @log_action
     def update_task(self, task_id: int, title: Optional[str] = None, description: Optional[str] = None, priority: Optional[str] = None) -> Optional[Task]:
@@ -236,8 +233,3 @@ class TaskManager:
             "priority_counts": priorities
         }
 
-    def get_statistics(self) -> dict:
-        """
-        Alias for compatibility with existing codebase.
-        """
-        return self.show_statistics()

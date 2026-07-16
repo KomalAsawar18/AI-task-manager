@@ -22,7 +22,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(task.description, "Test Description")
         self.assertEqual(task.priority, "High")
         self.assertFalse(task.completed)
-        self.assertEqual(len(self.manager.get_tasks()), 1)
+        self.assertEqual(len(self.manager.view_tasks()), 1)
 
     def test_add_task_invalid_title(self):
         from pydantic import ValidationError
@@ -39,7 +39,7 @@ class TestTaskManager(unittest.TestCase):
         task = self.manager.add_task("To Delete")
         success = self.manager.delete_task(task.id)
         self.assertTrue(success)
-        self.assertEqual(len(self.manager.get_tasks()), 0)
+        self.assertEqual(len(self.manager.view_tasks()), 0)
 
     def test_delete_non_existent_task(self):
         success = self.manager.delete_task(999)
@@ -59,7 +59,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(updated.priority, "High")
 
         # Verify update persists
-        refetched_task = self.manager.get_tasks()[0]
+        refetched_task = self.manager.view_tasks()[0]
         self.assertEqual(refetched_task.title, "Updated Title")
 
     def test_complete_task(self):
@@ -80,13 +80,13 @@ class TestTaskManager(unittest.TestCase):
         results2 = self.manager.search_tasks("Buy")
         self.assertEqual(len(results2), 2)  # Apple and Shopping
 
-    def test_get_statistics(self):
+    def test_show_statistics(self):
         self.manager.add_task("Task 1", priority="High")
         self.manager.add_task("Task 2", priority="Medium")
         t3 = self.manager.add_task("Task 3", priority="Low")
         self.manager.complete_task(t3.id)
 
-        stats = self.manager.get_statistics()
+        stats = self.manager.show_statistics()
         self.assertEqual(stats["total"], 3)
         self.assertEqual(stats["completed"], 1)
         self.assertEqual(stats["pending"], 2)
@@ -108,11 +108,11 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(len(task_list_from_generator), 2)
         self.assertEqual(task_list_from_generator[0].title, "First Task")
         
-        # Test search_task
-        search_results = self.manager.search_task("Second")
+        # Test search_tasks
+        search_results = self.manager.search_tasks("Second")
         self.assertEqual(len(search_results), 1)
         self.assertEqual(search_results[0].id, t2.id)
-        
+
         # Test show_statistics
         stats = self.manager.show_statistics()
         self.assertEqual(stats["total"], 2)
