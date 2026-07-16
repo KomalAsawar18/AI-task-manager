@@ -32,23 +32,47 @@ manager = st.session_state.manager
 if "page" not in st.session_state:
     st.session_state.page = "Dashboard"
 
-# Force dark theme mode settings
-bg = "#030014"
-bg_subtle = "#08071a"
-card = "rgba(255, 255, 255, 0.03)"
-card_hover = "rgba(255, 255, 255, 0.06)"
-border = "rgba(255, 255, 255, 0.08)"
-border_focus = "#8f56ef"
-text = "#fafafa"
-text_muted = "#8e90a6"
-text_dim = "#5c5d70"
-accent_gradient = "linear-gradient(135deg, #8f56ef, #4f20ec)"
-green = "#22c55e"
-green_muted = "rgba(34, 197, 94, 0.1)"
-red = "#ef4444"
-red_muted = "rgba(239, 68, 68, 0.1)"
-amber = "#f59e0b"
-amber_muted = "rgba(245, 158, 11, 0.1)"
+# Initialize session state for theme
+if "theme" not in st.session_state:
+    st.session_state.theme = "Sleek Dark"
+
+# Theme Mode Colors config
+if st.session_state.theme == "Sleek Dark":
+    bg = "#030014"
+    bg_subtle = "#08071a"
+    card = "rgba(255, 255, 255, 0.03)"
+    card_hover = "rgba(255, 255, 255, 0.06)"
+    border = "rgba(255, 255, 255, 0.08)"
+    border_focus = "#8f56ef"
+    text = "#fafafa"
+    text_muted = "#8e90a6"
+    text_dim = "#5c5d70"
+    accent_gradient = "linear-gradient(135deg, #8f56ef, #4f20ec)"
+    green = "#22c55e"
+    green_muted = "rgba(34, 197, 94, 0.1)"
+    red = "#ef4444"
+    red_muted = "rgba(239, 68, 68, 0.1)"
+    amber = "#f59e0b"
+    amber_muted = "rgba(245, 158, 11, 0.1)"
+else:
+    # Classic Light Mode Theme
+    bg = "#f9fafd"
+    bg_subtle = "#f0f2f8"
+    card = "#ffffff"
+    card_hover = "#f3f4f6"
+    border = "#e5e7eb"
+    border_focus = "#4f20ec"
+    text = "#1f2937"
+    text_muted = "#4b5563"
+    text_dim = "#9ca3af"
+    accent_gradient = "linear-gradient(135deg, #4f20ec, #8f56ef)"
+    green = "#16a34a"
+    green_muted = "rgba(22, 163, 74, 0.1)"
+    red = "#dc2626"
+    red_muted = "rgba(220, 38, 38, 0.1)"
+    amber = "#d97706"
+    amber_muted = "rgba(217, 119, 6, 0.1)"
+
 shadow = "none"
 radius = "12px"
 
@@ -77,9 +101,22 @@ css = f"""
     --radius: {radius};
 }}
 
-/* Hide default Streamlit top header line and footer */
-header[data-testid="stHeader"], footer, [data-testid="stDecoration"] {{
+/* Hide Streamlit top bar decoration and footer */
+footer, [data-testid="stDecoration"] {{
     display: none !important;
+}}
+
+header[data-testid="stHeader"] {{
+    background-color: transparent !important;
+}}
+
+/* Ensure the sidebar toggle button is always colored high-contrast and very visible */
+header[data-testid="stHeader"] button {{
+    background-color: rgba(143, 86, 239, 0.2) !important;
+    border: 1px solid rgba(143, 86, 239, 0.4) !important;
+    color: var(--text) !important;
+    border-radius: 50% !important;
+    padding: 5px !important;
 }}
 
 /* Global app background */
@@ -232,11 +269,11 @@ with st.sidebar:
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     
-    # Read modifications timestamp
-    last_updated_str = "Never"
-    if os.path.exists(manager.file_path):
-        mtime = os.path.getmtime(manager.file_path)
-        last_updated_str = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+    # Theme Selection dropdown
+    theme_selection = st.selectbox("Theme Preference", ["Sleek Dark", "Classic Light"], index=0 if st.session_state.theme == "Sleek Dark" else 1)
+    if theme_selection != st.session_state.theme:
+        st.session_state.theme = theme_selection
+        st.rerun()
         
     st.markdown(f"""
     <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 2rem; font-size: 0.72rem; color: var(--text-muted); text-align: center;">
