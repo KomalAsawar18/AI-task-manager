@@ -1,24 +1,25 @@
 # AI Task Manager
 
-AI Task Manager is a modular, production-ready Command Line Interface (CLI) application designed as a robust foundation for task planning and tracking. Built with clean architecture principles and separation of concerns, the project is structured to easily scale and gradually evolve into an **Agentic AI Assistant** using **LangChain** and **OpenRouter**.
+AI Task Manager is a modular, production-ready **Streamlit Web Application** designed as a robust foundation for task planning and tracking. Built with clean architecture principles and separation of concerns, the project is structured to easily scale and gradually evolve into an **Agentic AI Assistant** using **LangChain** and **OpenRouter**.
 
 ---
 
 ## 🚀 Project Overview
 
-The AI Task Manager serves as a structured platform for managing tasks. Its components are decoupled into clean layers (Data Models, Business Services, CLI View, Utilities) allowing developers to substitute storage engines or upgrade interface layers without impacting core business logic.
+The AI Task Manager serves as a structured platform for managing tasks. Its components are decoupled into clean layers (Data Models, Business Services, Streamlit UI View, Utilities) allowing developers to substitute storage engines or upgrade interface layers without impacting core business logic.
 
 ---
 
 ## ✨ Features
 
+- **Linear-Style SaaS UI:** Premium dark purple layout using glassmorphism card styling, custom fonts (`Plus Jakarta Sans`), and progress counters.
 - **Pydantic Validation:** Strict type hints and validation schemas for tasks (e.g., minimum title length, positive ID validation, priority enum limits).
 - **CRUD Operations:** Seamlessly add, view, complete, and delete tasks.
-- **Search Engine:** Query title and descriptions with case-insensitive search logic.
-- **Task Statistics:** Get a high-level view of task counts, pending vs. completed status, completion percentage rates, and priority distribution.
+- **Toolbar Filtering & Sorters:** Search, Status filters (`All`, `Pending`, `Completed`), Priority level filters (`All`, `High`, `Medium`, `Low`), and Sort options (`Newest`, `Oldest`, `High Priority`, `Low Priority`) in a single toolbar.
+- **Database Sync Timestamps:** Displaying the database last sync modification time in the sidebar.
+- **UX Loader States & Toasts:** Spinner loader overlays and toast alerts for every CRUD operation.
 - **JSON Persistence:** Automatic serialization and atomic disk-writes to prevent data corruption.
 - **Logging & Decorators:** Dual-handler logging (`INFO` level to both console/stderr and `logs/app.log`) with decorators for automatic method execution tracing.
-- **Custom ASCII Formatting:** Beautifully rendered dynamic column-width tables in the CLI.
 
 ---
 
@@ -27,8 +28,8 @@ The AI Task Manager serves as a structured platform for managing tasks. Its comp
 ```text
 AI-task-manager/
 │
-├── main.py                 # CLI interface and main application menu loop
-├── requirements.txt         # Project dependencies (Pydantic, etc.)
+├── app.py                  # Main Streamlit web application view
+├── requirements.txt         # Project dependencies (Streamlit, Pydantic, etc.)
 ├── README.md                # Project documentation
 ├── .gitignore              # Files to ignore in Git version control
 │
@@ -44,7 +45,7 @@ AI-task-manager/
 │   ├── __init__.py
 │   ├── logger.py           # Logger configuration (Console & File logging)
 │   ├── decorators.py       # Custom log decorators for method tracking
-│   └── helpers.py          # ASCII table formatter and input validators
+│   └── helpers.py          # Visual table helpers
 │
 ├── data/
 │   └── tasks.json          # Main task repository file
@@ -60,6 +61,7 @@ AI-task-manager/
 
 ## 🛠️ Technologies
 
+- **Frontend/UI:** Streamlit, Pandas, Plotly
 - **Language:** Python 3.8+ (Designed and verified with Python 3.13)
 - **Validation:** Pydantic v2 (for model validation and serialization compatibility)
 - **Standard Libraries:** `datetime`, `json`, `logging`, `unittest`, `tempfile`
@@ -96,9 +98,9 @@ AI-task-manager/
 
 ## 🖥️ Usage
 
-Run the interactive CLI application:
+Run the Streamlit web application:
 ```bash
-python main.py
+streamlit run app.py
 ```
 
 ### Running Automated Tests
