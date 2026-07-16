@@ -230,9 +230,17 @@ with st.sidebar:
     st.button("⚙️ Settings", type="primary" if st.session_state.page == "Settings" else "secondary", on_click=set_page, args=("Settings",), use_container_width=True)
 
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("""
+    
+    # Read modifications timestamp
+    last_updated_str = "Never"
+    if os.path.exists(manager.file_path):
+        mtime = os.path.getmtime(manager.file_path)
+        last_updated_str = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+        
+    st.markdown(f"""
     <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 2rem; font-size: 0.72rem; color: var(--text-muted); text-align: center;">
-        Platform: TKXEL Core Framework
+        Platform: TKXEL Core Framework<br>
+        <span style="font-size: 0.65rem; color: var(--text-dim);">Last sync: {last_updated_str}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -267,7 +275,10 @@ if st.session_state.page == "Dashboard":
     with kpi_c3:
         render_metric_card("Completed", str(stats["completed"]))
     with kpi_c4:
-        render_metric_card("Progress Rate", f"{stats['percentage_completed']}%")
+        # Calculate today's created tasks count
+        today_date = datetime.now().date()
+        todays_created_count = sum(1 for t in manager.iter_tasks() if t.created_at.date() == today_date)
+        render_metric_card("Created Today", str(todays_created_count))
         
     # 3. Progress bar
     st.markdown("### 📈 Today's Progress")
@@ -292,6 +303,7 @@ if st.session_state.page == "Dashboard":
                 prio_badge_cls = f"badge-prio-{t.priority.lower()}"
                 status_badge_cls = "badge-status-completed" if t.completed else "badge-status-pending"
                 status_text = "Completed" if t.completed else "Pending"
+                overdue_badge = '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3); margin-left: 5px;">⏳ Overdue</span>' if not t.completed else ''
                 st.markdown(f"""
                 <div class="premium-card">
                     <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -299,6 +311,7 @@ if st.session_state.page == "Dashboard":
                         <div>
                             <span class="badge {prio_badge_cls}">{t.priority}</span>
                             <span class="badge {status_badge_cls}" style="margin-left: 5px;">{status_text}</span>
+                            {overdue_badge}
                         </div>
                     </div>
                 </div>
@@ -383,6 +396,7 @@ elif st.session_state.page == "Tasks":
             t_col1, t_col2 = st.columns([8, 2])
             with t_col1:
                 desc_text = t.description if t.description else "*No description provided.*"
+                overdue_badge = '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3); margin-left: 5px;">⏳ Overdue</span>' if not t.completed else ''
                 st.markdown(f"""
                 <div class="premium-card">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
@@ -390,6 +404,7 @@ elif st.session_state.page == "Tasks":
                         <div>
                             <span class="badge {prio_badge_cls}">{t.priority}</span>
                             <span class="badge {status_badge_cls}" style="margin-left: 5px;">{status_text}</span>
+                            {overdue_badge}
                         </div>
                     </div>
                     <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 0.6rem;">
@@ -404,14 +419,18 @@ elif st.session_state.page == "Tasks":
                 st.write("") # spacing alignment
                 if not t.completed:
                     if st.button("✓ Complete", key=f"comp_{t.id}", use_container_width=True):
-                        manager.complete_task(t.id)
+                        with st.spinner("Completing task..."):
+                            manager.complete_task(t.id)
+                        st.toast(f"Task #{t.id} completed successfully!", icon="✅")
                         st.session_state.success_msg = f"Task #{t.id} marked as completed successfully!"
                         st.rerun()
                 else:
                     st.button("✓ Done", key=f"done_{t.id}", disabled=True, use_container_width=True)
                     
                 if st.button("🗑 Delete", key=f"del_{t.id}", use_container_width=True):
-                    manager.delete_task(t.id)
+                    with st.spinner("Deleting task..."):
+                        manager.delete_task(t.id)
+                    st.toast(f"Task #{t.id} deleted successfully!", icon="🗑️")
                     st.session_state.success_msg = f"Task #{t.id} deleted successfully!"
                     st.rerun()
 
@@ -436,7 +455,9 @@ elif st.session_state.page == "Add Task":
             submitted = st.form_submit_button("Add Task To Registry", use_container_width=True)
             if submitted:
                 try:
-                    task = manager.add_task(title, description, priority)
+                    with st.spinner("Saving task to registry..."):
+                        task = manager.add_task(title, description, priority)
+                    st.toast("Task successfully created!", icon="➕")
                     st.session_state.success_msg = f"Task #{task.id} created successfully!"
                     st.rerun()
                 except ValidationError as ve:
@@ -511,7 +532,9 @@ elif st.session_state.page == "Settings":
     with st.expander("Wipe Task Database", expanded=True):
         st.write("Wiping the task repository database is permanent and cannot be undone.")
         if st.button("Wipe Task Database", use_container_width=True, type="secondary"):
-            manager.tasks = []
-            manager.save_tasks()
-            st.success("Wiped task database successfully.")
+            with st.spinner("Wiping task database..."):
+                manager.tasks = []
+                manager.save_tasks()
+            st.toast("Wiped task database successfully.", icon="🚨")
+            st.session_state.success_msg = "Wiped task database successfully."
             st.rerun()
