@@ -24,7 +24,7 @@ st.set_page_config(
 )
 
 # Initialize TaskManager in session state
-if "manager" not in st.session_state:
+if "manager" not in st.session_state or not hasattr(st.session_state.manager, "filter_tasks"):
     st.session_state.manager = TaskManager()
 manager = st.session_state.manager
 
